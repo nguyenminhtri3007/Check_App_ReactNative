@@ -1,14 +1,17 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Image, StyleSheet } from "react-native";
 import HomeScreen from "./src/containers/screens/home/home.screen";
 import ReportScreen from "./src/containers/screens/report/report.screen";
-import StatsScreen from "./src/containers/screens/analytics/analytics.screen";
 import NewsScreen from "./src/containers/screens/news/news.screen";
 import ProfileScreen from "./src/containers/screens/profile/profile.screen";
 import { CreateReportComponent } from "./src/containers/screens/report/comp/create-report/create-report";
+import LoginScreen from "./src/containers/screens/auth/sign-in/LoginScreen";
+import LoginOTPScreen from "./src/containers/screens/auth/comp/loginotp";
+import SplashScreen from "./src/containers/screens/auth/sign-up/SplashScreen";
+import { AnalyticsScreen } from "./src/containers/screens/analytics/analytics.screen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -24,9 +27,10 @@ const BottomTabs = () => {
       }}
     >
       <Tab.Screen
-        name="Chấm Công"
+        name="Chấm công"
         component={HomeScreen}
         options={{
+          title: 'Chấm công',
           tabBarIcon: ({ size, color }) => (
             <Image
               source={require("./assets/icons/SealCheck.png")}
@@ -49,7 +53,7 @@ const BottomTabs = () => {
       />
       <Tab.Screen
         name="Thống Kê"
-        component={StatsScreen}
+        component={AnalyticsScreen}
         options={{
           tabBarIcon: ({ size, color }) => (
             <Image
@@ -90,12 +94,34 @@ const BottomTabs = () => {
 const App = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator initialRouteName="splash">
         <Stack.Screen
-          name="MainTabs"
-          component={BottomTabs}
+          name="splash"
+          component={SplashScreen}
           options={{ headerShown: false }}
         />
+
+        <Stack.Screen
+          name="sign-in"
+          component={LoginScreen}
+          options={{
+            headerShown: false
+          }}
+        />
+        <Stack.Screen
+          name="sign-in-otp"
+          component={LoginOTPScreen}
+          options={{
+            headerShown: false
+          }}
+        />
+        {/* <Stack.Screen
+          name="analytics"
+          component={AnalyticsScreen}
+          options={{
+            headerShown: false
+          }}
+        /> */}
         <Stack.Screen
           name="create-report"
           component={CreateReportComponent}
@@ -106,10 +132,15 @@ const App = () => {
               fontWeight: "bold",
             },
             headerStyle: {
-              backgroundColor: "#f5f5f5",
+              backgroundColor: "#f0f0f0",
             },
             headerTitleAlign: "center",
           }}
+        />
+        <Stack.Screen
+          name="MainTabs"
+          component={BottomTabs}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

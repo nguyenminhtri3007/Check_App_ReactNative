@@ -8,16 +8,21 @@ import {
     Image,
     TouchableOpacity,
     View,
-    TextInput
-} from "react-native";
-import Icon from 'react-native-vector-icons/Ionicons';
+    TextInput,
+    Alert
 
-const LoginOTPScreen = () => {
+} from "react-native";
+import { AppConfig } from "../../../../common/config/app.config";
+
+const LoginOTPScreen = ({ navigation, route }: any) => {
+    const email = route.params?.email || "email của bạn";
+    const OTP = String(route.params?.otp ?? "");
+    const token = route.params?.token ?? "";
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
     const [otp, setOtp] = useState<string[]>(new Array(4).fill(''));
     const inputRefs = useRef<Array<TextInput | null>>(new Array(4).fill(null));
     const [timer, setTimer] = useState(180);
-    const [resendAvailable, setResendAvailable] = useState(false);
+    const [resendAvailable, setResendAvailable] = useState(false)
 
     useEffect(() => {
         if (timer > 0) {
@@ -57,14 +62,34 @@ const LoginOTPScreen = () => {
         setResendAvailable(false);
     };
 
+    const onHandleVerifyOTP = async () => {
+        const enteredOTP = otp.join("").trim(); // Chuyển mảng thành chuỗi và loại bỏ khoảng trắng
+
+        console.log("OTP nhập vào:", enteredOTP);
+        console.log("OTP từ server:", OTP);
+
+        if (enteredOTP === OTP) {
+            // Nếu OTP đúng, chuyển sang màn hình chính
+            const appConfig = new AppConfig();
+            await appConfig.setAccessToken(token);
+            navigation.navigate("MainTabs");
+        } else {
+            Alert.alert(
+                "Lỗi xác thực OTP", // Tiêu đề
+                "Mã OTP không chính xác! Vui lòng thử lại.", // Nội dung thông báo
+                [{ text: "OK", style: "destructive" }] // Nút OK
+            );
+        }
+    }
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar backgroundColor={'#FF3B30'} barStyle="light-content" />
-            <TouchableOpacity style={styles.backButton}>
-                <Image source={require('../../../../assets/icons/arrowback')} style={{ width: 24, height: 24 }} />
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                <Image source={require('../../../../../assets/icons/arrowback.png')} style={{ width: 24, height: 24 }} />
             </TouchableOpacity>
             <View style={styles.logoContainer}>
-                <Image source={require('../../../../assets/ìmages/LogoOTP.png')}
+                <Image source={require('../../../../../assets/images/LogoOTP.png')}
                     style={styles.logo}
                 />
             </View>
@@ -72,7 +97,7 @@ const LoginOTPScreen = () => {
             <View style={styles.header}>
                 <Text style={styles.text}>Nhập mã OTP</Text>
                 <Text style={styles.title}>
-                    Mã OTP đã được gửi đến email <Text style={styles.email}>lancel100802@gmail.com</Text>
+                    Mã OTP đã được gửi đến email <Text style={styles.email}>{email}</Text>
                 </Text>
             </View>
 
@@ -97,7 +122,7 @@ const LoginOTPScreen = () => {
                 ))}
             </View>
 
-            <TouchableOpacity style={styles.verifyButton}>
+            <TouchableOpacity style={styles.verifyButton} onPress={() => onHandleVerifyOTP()}>
                 <Text style={styles.verifyButtonText}>Xác nhận</Text>
             </TouchableOpacity>
 
@@ -216,4 +241,3 @@ const styles = StyleSheet.create({
 });
 
 export default LoginOTPScreen;
-

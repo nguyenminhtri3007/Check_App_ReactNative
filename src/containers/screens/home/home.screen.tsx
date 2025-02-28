@@ -9,90 +9,242 @@ import {
   PanResponder,
   Animated,
   Image,
+  TouchableOpacity,
+  Modal,
 } from "react-native";
+import { AppConfig } from "../../../common/config/app.config";
+import { AttendanceService } from "../../../data/services/attendance.service";
+
 
 const { width } = Dimensions.get("window");
 const SLIDE_WIDTH = width - 48;
 const BUTTON_WIDTH = 140;
 const MAX_TRANSLATE = SLIDE_WIDTH - BUTTON_WIDTH - 8;
-const CheckInScreen = () => {
+const CheckInScreen = ({ navigation }: any) => {
+  const [bgColor, setBgColor] = useState("#062E26");
   const [time, setTime] = useState<Date>(new Date());
   const [checkedIn, setCheckedIn] = useState<boolean>(false);
   const [checkInTime, setCheckInTime] = useState<Date | null>(null);
   const [checkOutTime, setCheckOutTime] = useState<Date | null>(null);
   const [totalTime, setTotalTime] = useState<string>("-- giờ -- phút");
   const translateX = useRef(new Animated.Value(0)).current;
+  const [modalDisplayed, setModalDisplayed] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [modalType, setModalType] = useState<"checkin" | "checkout">("checkin");
+
+  useEffect(() => {
+    if (checkInTime && checkOutTime) {
+      setTotalTime(calculateTotalTime(checkInTime, checkOutTime));
+    }
+  }, [checkOutTime, checkInTime]);
+
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
+    checkToken();
     return () => clearInterval(timer);
   }, []);
+
+  const checkToken = async () => {
+    try {
+      const appConfig = new AppConfig();
+      const token = await appConfig.getAccessToken();
+      console.log(token);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  const animateSlider = (toValue: number, callback?: () => void) => {
+    Animated.timing(translateX, {
+      toValue,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      if (callback) callback();
+    });
+  };
+
+  const handleSwipe = async (gestureDx: number) => {
+    if (gestureDx > MAX_TRANSLATE * 0.7) {
+      try {
+        const now = new Date();
+        if (!checkedIn) {
+          // Gọi API check-in
+          const response = await attendanceServices.checkIn();
+          console.log(response);
+
+          setCheckInTime(response?.data?.checkintime);
+          setBgColor("#3A0D0D");
+          setModalType("checkin");
+          setCheckedIn(prevCheckedIn => !prevCheckedIn);
+          console.log("Check-in time:", response?.data?.checkintime?.toLocaleTimeString("vi-VN"));
+        } else {
+          // Gọi API check-out
+          console.log('abc')
+
+          const response = await attendanceServices.checkOut();
+
+          console.log(response);
+
+          setCheckOutTime(now);
+          setBgColor("#062E26");
+          setModalType("checkout");
+
+          if (checkInTime) {
+            const totalTime = calculateTotalTime(checkInTime, now);
+            setTotalTime(totalTime);
+            console.log("workTime:", totalTime);
+          }
+
+          console.log("Check-out time:", now.toLocaleTimeString("vi-VN"));
+          setCheckedIn(prevCheckedIn => !prevCheckedIn);
+        }
+        setShowSuccessModal(true);
+        setModalDisplayed(true);
+
+        animateSlider(MAX_TRANSLATE, () => animateSlider(0));
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    } else {
+      animateSlider(0);
+    }
+  };
+  const handleResendAna = () => {
+    navigation.navigate("MainTabs", { screen: "Thống Kê" });
+  };
+
+  const calculateTotalTime = (checkIn: Date | null, checkOut: Date | null): string => {
+    if (!checkIn || !checkOut) return "-- giờ -- phút"; // Nếu chưa có thời gian, trả về giá trị mặc định
+
+    const diffMs = checkOut.getTime() - checkIn.getTime();
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${hours} giờ ${minutes} phút`;
+  };
+
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderMove: (_, gesture) => {
-        if (!checkedIn && gesture.dx >= 0 && gesture.dx <= MAX_TRANSLATE) {
+        if (gesture.dx >= 0 && gesture.dx <= MAX_TRANSLATE) {
           translateX.setValue(gesture.dx);
         }
       },
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > MAX_TRANSLATE * 0.7 && !checkedIn) {
-          setCheckedIn(true);
-          setCheckInTime(new Date());
-          Animated.timing(translateX, {
-            toValue: MAX_TRANSLATE,
-            duration: 200,
-            useNativeDriver: false,
-          }).start();
-        } else if (checkedIn) {
-          if (gesture.dx > MAX_TRANSLATE * 0.7) {
-            setCheckOutTime(new Date());
-            setCheckedIn(false);
-            Animated.timing(translateX, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: false,
-            }).start();
-          } else {
-
-            Animated.timing(translateX, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: false,
-            }).start();
-          }
-        }
-      },
+      onPanResponderRelease: (_, gesture) => handleSwipe(gesture.dx),
     })
   ).current;
-  const handleCheckOut = () => {
-    setCheckedIn(false);
-    setCheckInTime(null);
-    setCheckOutTime(null);
-    translateX.setValue(0);
+
+  const handleCheckOut = async () => {
+    try {
+      const response = await attendanceServices.checkOut();
+      console.log(response);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
+  const attendanceServices = new AttendanceService();
+  const handleCheckIn = async () => {
+    try {
+      const response = await attendanceServices.checkIn();
+      console.log(response);
+    } catch (error) {
+      console.log(error);
+    }
+  }
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#062E26" />
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
+      <StatusBar barStyle="light-content" backgroundColor={bgColor} />
       <Header />
       <Clock time={time} />
-      {checkedIn ? (
-        <CheckOutButton onPress={handleCheckOut} />
-      ) : (
-        <CheckInButton
+      {checkedIn === false && checkInTime === null ? (
+        // Nếu chưa check-in, hiển thị nút check-in
+        <CheckInOutButton
           checkedIn={checkedIn}
           panResponder={panResponder}
           translateX={translateX}
+          onPress={() => handleCheckIn()}
         />
+      ) : checkedIn === true ? (
+        // Nếu đã check-in, hiển thị nút check-out
+        <CheckInOutButton
+          checkedIn={checkedIn}
+          panResponder={panResponder}
+          translateX={translateX}
+          onPress={() => handleCheckOut()}
+        />
+      ) : (
+        // Nếu đã check-out, hiển thị thông báo kết thúc ngày làm việc
+        <View style={styles.endWorkContainer}>
+          <Text style={styles.endWorkText}>
+            Ngày làm việc hôm nay đã kết thúc, hẹn gặp lại bạn vào ngày mai nhé!
+          </Text>
+          <TouchableOpacity
+            style={styles.historyButton}
+            onPress={handleResendAna}
+          >
+            <Text style={styles.historyText}>Xem lịch sử chấm công</Text>
+            <Image
+              source={require("../../../../assets/icons/iconBack.png")}
+              style={styles.iconBack}
+            />
+          </TouchableOpacity>
+        </View>
       )}
       <InfoSection checkedIn={checkedIn}
         time={time}
-        checkInTime={checkInTime ? formatTime(checkInTime) : null}
-        checkOutTime={checkOutTime ? formatTime(checkOutTime) : null} />
+        checkInTime={checkInTime ? formatTime(checkInTime) : ""}
+        checkOutTime={checkOutTime ? formatTime(checkOutTime) : ""}
+        totalTime={totalTime} />
+      <CheckInSuccessModal
+        visible={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          setModalDisplayed(false);
+        }}
+        modalType={modalType}
+      />
     </View>
+  );
+};
+
+const CheckInSuccessModal = ({ visible, onClose, modalType }: { visible: boolean; onClose: () => void; modalType: "checkin" | "checkout"; }) => {
+  return (
+    <Modal transparent animationType="fade" visible={visible}>
+      <View style={styles.overlay}>
+        <View style={styles.modalContainer}>
+          {/* Icon check thành công */}
+          <View style={styles.iconContainer}>
+            <Image source={require("../../../../assets/icons/success.png")} style={styles.successIcon} />
+          </View>
+
+          {/* Tiêu đề khác nhau */}
+          <Text style={styles.successTitle}>
+            <Text style={modalType === "checkin" ? styles.greenText : styles.redText}>
+              {modalType === "checkin" ? "Check in" : "Check out"}
+            </Text>{" "}
+            <Text style={styles.boldText}>thành công</Text>
+          </Text>
+
+          {/* Nội dung khác nhau */}
+          <Text style={styles.messageText} >
+            {modalType === "checkin"
+              ? "Chúc bạn một ngày làm việc vui vẻ!"
+              : "Hẹn gặp lại bạn vào ngày mai nhé!"}
+          </Text>
+
+          {/* Nút đóng */}
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.closeButtonText}>Đã hiểu</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 };
 
@@ -109,10 +261,25 @@ const Header = () => (
   </View>
 );
 
+const convertDate = (date: Date) => {
+  const day = date.getDate();
+  const month = date.getMonth();
+  const year = date.getUTCFullYear();
+  let finalDay = day + "";
+  let finalMonth = `${month + 1}`;
+  if (day < 10) {
+    finalDay = "0" + day;
+  }
+  if (month < 10) {
+    finalMonth = "0" + `${month + 1}`;
+  }
+  return `${finalDay}/${finalMonth}/${year}`;
+}
+
 const Clock = ({ time }: { time: Date }) => (
   <View style={styles.clockContainer}>
     <Text style={styles.dateText}>
-      Thứ {time.getDay() + 1}, {time.getDate()}/{time.getMonth() + 1}/{time.getFullYear()}
+      Thứ {time.getDay() + 1}, {convertDate(time)}
     </Text>
     <Text style={styles.timeText}>
       {`${time.getHours()}:${time.getMinutes().toString().padStart(2, "0")}`}
@@ -120,14 +287,16 @@ const Clock = ({ time }: { time: Date }) => (
   </View>
 );
 
-const CheckInButton = ({
+const CheckInOutButton = ({
   checkedIn,
   panResponder,
   translateX,
+  onPress,
 }: {
   checkedIn: boolean;
   panResponder: any;
   translateX: Animated.Value;
+  onPress: () => void;
 }) => (
   <View style={styles.track}>
     <Animated.View
@@ -135,30 +304,18 @@ const CheckInButton = ({
         styles.checkInButton,
         { transform: [{ translateX }], backgroundColor: checkedIn ? "#FF6871" : "#00D293" },
       ]}
-      {...(!checkedIn ? panResponder.panHandlers : {})}
+      {...panResponder.panHandlers}
+
     >
       <Text style={styles.checkInText}>
         {checkedIn ? "Check out" : "Check in"}
       </Text>
       <Image source={require("../../../../assets/icons/check.png")} style={styles.checkIcon} />
     </Animated.View>
-    {!checkedIn && <Text style={styles.label}>Trượt để check in</Text>}
-  </View>
-);
-const CheckOutButton = ({ onPress }: { onPress: () => void }) => (
-  <View style={styles.track}>
-    <Animated.View
-      style={[styles.checkInButton, { backgroundColor: "#FF6871" }]}
-    >
-      <Text style={styles.checkInText} onPress={onPress}>
-        Check out
-      </Text>
-      <Image
-        source={require("../../../../assets/icons/check.png")}
-        style={styles.checkIcon}
-      />
-    </Animated.View>
-    <Text style={styles.label}>Trượt để check out</Text>
+
+    <Text style={styles.label}>
+      {checkedIn ? "Trượt để check out" : "Trượt để check in"}
+    </Text>
   </View>
 );
 
@@ -167,17 +324,19 @@ const InfoSection = ({
   time,
   checkInTime,
   checkOutTime,
+  totalTime,
 }: {
   checkedIn: boolean;
   time: Date;
-  checkInTime: string | null;
-  checkOutTime: string | null;
+  checkInTime: string | "";
+  checkOutTime: string | "";
+  totalTime: string;
 }) => (
   <View style={styles.infoContainer}>
     {[
       { title: "Check in", data: checkInTime || "  --:--" },
       { title: "Check out", data: checkOutTime || "   --:--" },
-      { title: "Thời gian làm việc", data: "-- giờ -- phút" },
+      { title: "Thời gian làm việc", data: totalTime },
     ].map((item, index) => (
       <View key={index} style={styles.infoBox}>
         <Text style={styles.infoTitle}>{item.title}</Text>
@@ -188,24 +347,30 @@ const InfoSection = ({
   </View>
 );
 
-const formatTime = (date: Date): string =>
-  `${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`;
+const formatTime = (date: unknown): string => {
+  if (!(date instanceof Date) || isNaN(date.getTime())) {
+    console.warn("Invalid date received:", date);
+    return "--:--"; // Giá trị mặc định khi date không hợp lệ
+  }
+
+  return `${date.getHours()}:${date.getMinutes().toString().padStart(2, "0")}`;
+};
 
 export default CheckInScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#062E26",
+
     justifyContent: "space-between",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#042F2E",
     paddingHorizontal: 24,
     height: 40,
+    marginTop: 16
   },
   headerText: {
     fontSize: 14,
@@ -305,6 +470,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: 130,
+
   },
   infoBox: {
   },
@@ -324,4 +490,102 @@ const styles = StyleSheet.create({
     backgroundColor: "#E0E0E0",
     marginVertical: 5,
   },
+  endWorkContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 53,
+  },
+  endWorkText: {
+    color: "#68D2FF",
+    fontSize: 16,
+    textAlign: "center",
+  },
+
+  historyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    marginTop: 20,
+    height: 36,
+    width: 212
+  },
+
+  historyText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#000",
+    marginLeft: 14
+
+  },
+  iconBack: {
+    width: 16,
+    height: 16,
+    tintColor: "#000",
+    marginRight: 10
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    backgroundColor: "#FFFFFF",
+    width: "80%",
+    borderRadius: 12,
+    alignItems: "center",
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+  },
+  iconContainer: {
+    backgroundColor: "#00D293",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  successIcon: {
+    width: 32,
+    height: 32,
+    tintColor: "#FFF",
+  },
+  successTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000",
+    marginBottom: 8,
+  },
+  greenText: {
+    color: "#00D293",
+    fontWeight: "bold",
+  },
+  redText: {
+    color: "#E05B63",
+    fontWeight: "bold",
+  },
+  boldText: {
+    fontWeight: "bold",
+  },
+  messageText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  closeButton: {
+    backgroundColor: "#000",
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 24,
+  },
+  closeButtonText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FFF",
+  },
+
 });

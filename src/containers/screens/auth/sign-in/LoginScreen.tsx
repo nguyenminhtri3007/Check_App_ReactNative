@@ -12,50 +12,67 @@ import {
   StatusBar,
   Dimensions,
 } from "react-native";
+import { AuthService } from "../../../../data/services/auth.service";
+import { AuthModel } from "../../../../data/model/auth.model";
+import { AppConfig } from "../../../../common/config/app.config";
 
 const screenWidth = Dimensions.get("window").width;
 
-const LoginScreen = () => {
-
-
+const LoginScreen = ({ navigation }: any) => {
+  const authServices = new AuthService();
   const [email, setEmail] = useState<string>("");
   const [emailError, setEmailError] = useState<string>("");
-
 
   const isValidEmail = (text: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(text);
   };
 
-
   const handleEmailChange = (text: string) => {
     setEmail(text);
     setEmailError("");
   };
 
-  const handleLoginPress = () => {
+  const handleLoginPress = async () => {
     let errorMessage = "";
 
     if (!email.trim()) {
       errorMessage = "Vui lòng nhập email!";
     } else if (!isValidEmail(email)) {
-      errorMessage = "Text help";
+      errorMessage = "Vui lòng nhập đúng định dạng email!";
     }
 
     if (errorMessage) {
       setEmailError(errorMessage);
-      Alert.alert("Lỗi", "Vui lòng kiểm tra lại email");
       return;
     }
 
-    Alert.alert("Thông báo", "Chuyển trang");
+    try {
+      const authModel = new AuthModel(email);
+      const response = await authServices.signIn(authModel);
+
+      console.log(response);
+
+      if (response) {
+        const { token, otp } = response;
+        // Chuyển sang màn hình nhập OTP và truyền OTP thật
+        navigation.navigate('sign-in-otp', { email, otp, token });
+      } else {
+        Alert.alert("Lỗi", "Không nhận được mã OTP từ server.");
+      }
+
+      // navigation.navigate('sign-in-otp', { email });
+    } catch (error) {
+      console.log(error);
+    }
+
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor={'red'} barStyle="dark-content"></StatusBar>
+      <StatusBar backgroundColor={'white'} barStyle="dark-content"></StatusBar>
       <View style={styles.logoContainer}>
-        <Image source={require('../../../../assets/ìmages/iconLogo.png')}
+        <Image source={require('../../../../../assets/images/iconLogo.png')}
           style={styles.logo}
         />
       </View>
@@ -81,7 +98,9 @@ const LoginScreen = () => {
           />
           {emailError ? <Text style={styles.textHelp}>{emailError}</Text> : null}
         </View>
-        <TouchableOpacity style={styles.button} onPress={handleLoginPress}>
+        <TouchableOpacity style={styles.button} onPress={() => {
+          handleLoginPress();
+        }}>
           <Text style={styles.buttonText}>Đăng nhập</Text>
 
         </TouchableOpacity>
@@ -112,7 +131,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
     textAlign: "center",
     paddingHorizontal: 24,
-    fontSize: 14,
+    fontSize: 16,
     color: "#808B99"
   },
 
