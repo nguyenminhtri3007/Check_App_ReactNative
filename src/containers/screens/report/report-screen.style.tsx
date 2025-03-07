@@ -39,7 +39,7 @@ export const styles = StyleSheet.create({
         justifyContent: "space-evenly",
     },
     item: {
-        height: 48,
+        height: 58,
         borderRadius: 8,
         borderBottomWidth: 1,
         borderBottomColor: "#E2E6EA"
@@ -59,6 +59,7 @@ export const styles = StyleSheet.create({
         color: "#666",
         marginTop: 4,
         marginRight: 24
-    }
+    },
+
 
 });

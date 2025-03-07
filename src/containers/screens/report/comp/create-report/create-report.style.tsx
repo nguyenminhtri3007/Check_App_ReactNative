@@ -56,6 +56,7 @@ export const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         color: "black",
+        marginLeft: 12
     },
     iconDate: {
         padding: 5,
@@ -79,6 +80,7 @@ export const styles = StyleSheet.create({
     inputNoteHome: {
         fontSize: 16,
         color: "black",
+        marginLeft: 12
     },
     submitContainer: {
         marginTop: 200,
@@ -105,6 +107,41 @@ export const styles = StyleSheet.create({
         fontSize: 14, marginTop: 5,
         marginLeft: 20
     },
-
+    overlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "center",
+        alignItems: "center"
+    },
+    modalContainer: {
+        backgroundColor: "#FFFFFF",
+        width: "80%",
+        borderRadius: 12,
+        alignItems: "center",
+        paddingVertical: 24,
+        paddingHorizontal: 16,
+    },
+    successIcon: {
+        width: 32,
+        height: 32,
+        tintColor: "#FFF",
+    },
+    successTitle: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: "#000",
+        marginBottom: 8,
+    },
+    closeButton: {
+        backgroundColor: "#000",
+        paddingVertical: 12,
+        paddingHorizontal: 40,
+        borderRadius: 24,
+    },
+    closeButtonText: {
+        fontSize: 14,
+        fontWeight: "bold",
+        color: "#FFF",
+    },
 
 });

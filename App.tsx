@@ -12,6 +12,7 @@ import LoginScreen from "./src/containers/screens/auth/sign-in/LoginScreen";
 import LoginOTPScreen from "./src/containers/screens/auth/comp/loginotp";
 import SplashScreen from "./src/containers/screens/auth/sign-up/SplashScreen";
 import { AnalyticsScreen } from "./src/containers/screens/analytics/analytics.screen";
+import { RequestDetailScreen } from "./src/containers/screens/report/comp/detail-screen/detail.screen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -115,13 +116,13 @@ const App = () => {
             headerShown: false
           }}
         />
-        {/* <Stack.Screen
-          name="analytics"
-          component={AnalyticsScreen}
+        <Stack.Screen
+          name="detail-screen"
+          component={RequestDetailScreen}
           options={{
             headerShown: false
           }}
-        /> */}
+        />
         <Stack.Screen
           name="create-report"
           component={CreateReportComponent}

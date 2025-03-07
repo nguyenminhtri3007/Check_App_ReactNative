@@ -48,10 +48,15 @@ const LoginScreen = ({ navigation }: any) => {
     }
 
     try {
+
+      console.log("đã gửi email:", email)
       const authModel = new AuthModel(email);
+
+      console.log("Dữ liệu gửi lên server:", authModel);
+
       const response = await authServices.signIn(authModel);
 
-      console.log(response);
+      console.log("Đã phản hồi:", response);
 
       if (response) {
         const { token, otp } = response;
@@ -60,11 +65,11 @@ const LoginScreen = ({ navigation }: any) => {
       } else {
         Alert.alert("Lỗi", "Không nhận được mã OTP từ server.");
       }
-
-      // navigation.navigate('sign-in-otp', { email });
     } catch (error) {
       console.log(error);
+      Alert.alert("Lỗi", "Có lỗi xảy ra khi đăng nhập. Vui lòng thử lại.");
     }
+
 
   };
 

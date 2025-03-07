@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo, useReducer } from "react";
 import {
   View,
   Text,
@@ -24,36 +24,21 @@ const CheckInScreen = ({ navigation }: any) => {
   const [bgColor, setBgColor] = useState("#062E26");
   const [time, setTime] = useState<Date>(new Date());
   const [checkedIn, setCheckedIn] = useState<boolean>(false);
-  const [checkInTime, setCheckInTime] = useState<Date | null>(null);
-  const [checkOutTime, setCheckOutTime] = useState<Date | null>(null);
+  const [checkInTime, setCheckInTime] = useState<string>('');
+  const [checkOutTime, setCheckOutTime] = useState<string>('');
   const [totalTime, setTotalTime] = useState<string>("-- giờ -- phút");
   const translateX = useRef(new Animated.Value(0)).current;
   const [modalDisplayed, setModalDisplayed] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [modalType, setModalType] = useState<"checkin" | "checkout">("checkin");
 
-  useEffect(() => {
-    if (checkInTime && checkOutTime) {
-      setTotalTime(calculateTotalTime(checkInTime, checkOutTime));
-    }
-  }, [checkOutTime, checkInTime]);
-
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
-    checkToken();
+
     return () => clearInterval(timer);
   }, []);
 
-  const checkToken = async () => {
-    try {
-      const appConfig = new AppConfig();
-      const token = await appConfig.getAccessToken();
-      console.log(token);
-    } catch (error) {
-      console.log(error);
-    }
-  }
 
   const animateSlider = (toValue: number, callback?: () => void) => {
     Animated.timing(translateX, {
@@ -66,50 +51,71 @@ const CheckInScreen = ({ navigation }: any) => {
   };
 
   const handleSwipe = async (gestureDx: number) => {
-    if (gestureDx > MAX_TRANSLATE * 0.7) {
-      try {
-        const now = new Date();
-        if (!checkedIn) {
-          // Gọi API check-in
-          const response = await attendanceServices.checkIn();
-          console.log(response);
-
-          setCheckInTime(response?.data?.checkintime);
-          setBgColor("#3A0D0D");
-          setModalType("checkin");
-          setCheckedIn(prevCheckedIn => !prevCheckedIn);
-          console.log("Check-in time:", response?.data?.checkintime?.toLocaleTimeString("vi-VN"));
-        } else {
-          // Gọi API check-out
-          console.log('abc')
-
-          const response = await attendanceServices.checkOut();
-
-          console.log(response);
-
-          setCheckOutTime(now);
-          setBgColor("#062E26");
-          setModalType("checkout");
-
-          if (checkInTime) {
-            const totalTime = calculateTotalTime(checkInTime, now);
-            setTotalTime(totalTime);
-            console.log("workTime:", totalTime);
-          }
-
-          console.log("Check-out time:", now.toLocaleTimeString("vi-VN"));
-          setCheckedIn(prevCheckedIn => !prevCheckedIn);
-        }
-        setShowSuccessModal(true);
-        setModalDisplayed(true);
-
+    if (gestureDx > MAX_TRANSLATE * 0.8) {
+      const now = new Date();
+      if (checkedIn === false) {
+        const response = await attendanceServices.checkIn();
+        setCheckInTime(response.data.checkintime);
+        setBgColor("#3A0D0D");
+        setModalType("checkin");
+        setCheckedIn(prevCheckedIn => !prevCheckedIn);
         animateSlider(MAX_TRANSLATE, () => animateSlider(0));
-      } catch (error) {
-        console.error("Error:", error);
+      } else {
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const checkOutTimeString = `${mm}:${hh}:${ss}`;
+        setCheckOutTime(checkOutTimeString);
+        setBgColor("#062E26");
+        setModalType("checkout");
       }
-    } else {
-      animateSlider(0);
+      setShowSuccessModal(true);
     }
+    // if (gestureDx > MAX_TRANSLATE * 0.7) {
+    //   try {
+    //     const now = new Date();
+    //     if (!checkedIn) {
+    //       // Gọi API check-in
+    //       const response = await attendanceServices.checkIn();
+    //       console.log(response);
+
+    // setCheckInTime(response?.data?.checkintime);
+    // setBgColor("#3A0D0D");
+    // setModalType("checkin");
+    // // setCheckedIn(prevCheckedIn => !prevCheckedIn);
+    //       console.log("Check-in time:", response?.data?.checkintime?.toLocaleTimeString("vi-VN"));
+    //       return;
+    //     } else {
+    //       // Gọi API check-out
+    //       console.log('abc')
+
+    //       const response = await attendanceServices.checkOut();
+
+    //       console.log(response);
+
+    // setCheckOutTime(now);
+    // setBgColor("#062E26");
+    // setModalType("checkout");
+
+    //       if (checkInTime && checkInTime !== null) {
+    //         const totalTime = calculateTotalTime(checkInTime, now);
+    //         setTotalTime(totalTime);
+    //         console.log("workTime:", totalTime);
+    //       }
+
+    //       console.log("Check-out time:", now.toLocaleTimeString("vi-VN"));
+    //       setCheckedIn(prevCheckedIn => !prevCheckedIn);
+    //     }
+    //     setShowSuccessModal(true);
+    //     setModalDisplayed(true);
+
+    //     animateSlider(MAX_TRANSLATE, () => animateSlider(0));
+    //   } catch (error) {
+    //     console.error("Error:", error);
+    //   }
+    // } else {
+    //   animateSlider(0);
+    // }
   };
   const handleResendAna = () => {
     navigation.navigate("MainTabs", { screen: "Thống Kê" });
@@ -139,24 +145,9 @@ const CheckInScreen = ({ navigation }: any) => {
     })
   ).current;
 
-  const handleCheckOut = async () => {
-    try {
-      const response = await attendanceServices.checkOut();
-      console.log(response);
-    } catch (error) {
-      console.log(error);
-    }
-  };
 
   const attendanceServices = new AttendanceService();
-  const handleCheckIn = async () => {
-    try {
-      const response = await attendanceServices.checkIn();
-      console.log(response);
-    } catch (error) {
-      console.log(error);
-    }
-  }
+
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
       <StatusBar barStyle="light-content" backgroundColor={bgColor} />
@@ -168,7 +159,6 @@ const CheckInScreen = ({ navigation }: any) => {
           checkedIn={checkedIn}
           panResponder={panResponder}
           translateX={translateX}
-          onPress={() => handleCheckIn()}
         />
       ) : checkedIn === true ? (
         // Nếu đã check-in, hiển thị nút check-out
@@ -176,7 +166,6 @@ const CheckInScreen = ({ navigation }: any) => {
           checkedIn={checkedIn}
           panResponder={panResponder}
           translateX={translateX}
-          onPress={() => handleCheckOut()}
         />
       ) : (
         // Nếu đã check-out, hiển thị thông báo kết thúc ngày làm việc
@@ -291,12 +280,12 @@ const CheckInOutButton = ({
   checkedIn,
   panResponder,
   translateX,
-  onPress,
+
 }: {
   checkedIn: boolean;
   panResponder: any;
   translateX: Animated.Value;
-  onPress: () => void;
+
 }) => (
   <View style={styles.track}>
     <Animated.View
